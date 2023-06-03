@@ -193,19 +193,30 @@
                       cat << EOF > ${cfg.baseDir}/user-mapping.xml
                       <user-mapping>
                         <authorize
-                              username="user"
-                              password="password"
+                            username="user"
+                            password="password">
 
-                          <!-- First authorized connection -->
-                          <connection name="localhost">
-                              <protocol>vnc</protocol>
-                              <param name="hostname">localhost</param>
-                              <param name="port">5901</param>
-                              <param name="password">password</param>
+                          <connection name="localhost-vnc">
+                            <protocol>vnc</protocol>
+                            <param name="hostname">localhost</param>
+                            <param name="port">5901</param>
+                          </connection>
+                          <connection name="localhost-ssh">
+                            <protocol>ssh</protocol>
+                            <param name="hostname">localhost</param>
+                            <param name="port">22</param>
                           </connection>
                         </authorize>
                       </user-mapping>
+                      EOF
 
+                      cat << EOF > ${cfg.baseDir}/guacd.conf
+                      [daemon]
+                      # log_level = debug
+
+                      [server]
+                      bind_host = 127.0.0.1
+                      bind_port = 4822
                       EOF
                     '';
                   };
@@ -214,7 +225,8 @@
                   services.tomcat = {
                     enable = true;
 
-                    webapps = [ pkgs.guacamole-client ];
+                    webapps = [ (pkgs.guacamole-client + "/guacamole-client-1.5.0.war") ];
+                    extraEnvironment = [ "GUACAMOLE_HOME=${cfg.baseDir}" ];
                   };
                 };
               };
