@@ -159,7 +159,7 @@
                       type = lib.types.path;
                       default = "/etc/guacamole";
                       description = lib.mdDoc ''
-                        Location of GUACAMOLE_HOME
+                        Location of $GUACAMOLE_HOME
                       '';
                     };
 
@@ -186,7 +186,7 @@
                       type = types.lines;
                       default = "";
                       description = lib.mdDoc ''
-                        Configuration written to GUACAMOLE_HOME/guacamole.properties
+                        Configuration written to $GUACAMOLE_HOME/guacamole.properties
                       '';
                     };
 
@@ -194,7 +194,7 @@
                       type = types.lines;
                       default = "";
                       description = lib.mdDoc ''
-                        Configuration written to GUACAMOLE_HOME/logback.xml
+                        Configuration written to $GUACAMOLE_HOME/logback.xml
                       '';
                     };
 
@@ -202,7 +202,7 @@
                       type = types.lines;
                       default = "";
                       description = lib.mdDoc ''
-                        Configuration written to GUACAMOLE_HOME/user-mapping.xml
+                        Configuration written to $GUACAMOLE_HOME/user-mapping.xml
                       '';
                     };
                   };
