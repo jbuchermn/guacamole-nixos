@@ -144,10 +144,7 @@
                   maintainers = with maintainers; [ ];
                 };
 
-                ###### interface
-
                 options = {
-
                   services.guacamole = {
                     enable = mkEnableOption (lib.mdDoc "Apache Guacamole");
 
@@ -170,10 +167,7 @@
 
                 };
 
-                ###### implementation
-
                 config = mkIf cfg.enable {
-
                   systemd.services.guacd = {
                     description = "Apache Guacamole server";
                     wantedBy = [ "multi-user.target" ];
@@ -199,23 +193,15 @@
                           <connection name="localhost-vnc">
                             <protocol>vnc</protocol>
                             <param name="hostname">localhost</param>
-                            <param name="port">5901</param>
-                          </connection>
-                          <connection name="localhost-ssh">
-                            <protocol>ssh</protocol>
-                            <param name="hostname">localhost</param>
-                            <param name="port">22</param>
+                            <param name="port">5900</param>
                           </connection>
                         </authorize>
                       </user-mapping>
                       EOF
 
                       cat << EOF > ${cfg.baseDir}/guacd.conf
-                      [daemon]
-                      # log_level = debug
-
                       [server]
-                      bind_host = 127.0.0.1
+                      bind_host = 127.0.0.1 # Default configuration has trouble with IPv6
                       bind_port = 4822
                       EOF
                     '';
@@ -231,11 +217,6 @@
                 };
               };
           };
-
-          devShell =
-            pkgs.mkShell {
-              buildInputs = [ ];
-            };
 
         }
       );
