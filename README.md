@@ -8,4 +8,4 @@ This is based on work done in [nixpkgs-184255](https://github.com/NixOS/nixpkgs/
 
 # State
 
-WIP - Works, however, currently only a dummy configuration with one vnc is used
+WIP - Works, however, currently configuration is very rudimentary
