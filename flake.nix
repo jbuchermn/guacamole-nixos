@@ -8,7 +8,137 @@
   };
 
   outputs = { self, flake-utils, nixpkgs }:
-    flake-utils.lib.eachDefaultSystem
+    {
+      nixosModules = {
+        guacamole = { config, lib, pkgs, ... }:
+          with lib;
+          let
+            cfg = config.services.guacamole;
+          in
+          {
+            meta = {
+              maintainers = [ ];
+            };
+
+            options = {
+              services.guacamole = {
+                enable = mkEnableOption (lib.mdDoc "Apache Guacamole");
+
+                extraEnvironment = mkOption {
+                  type = types.listOf types.str;
+                  default = [ ];
+                  example = [ "ENVIRONMENT=production" ];
+                  description = lib.mdDoc "Environment Variables to pass to guacd";
+                };
+
+                baseDir = mkOption {
+                  type = lib.types.path;
+                  default = "/etc/guacamole";
+                  description = lib.mdDoc ''
+                    Location of $GUACAMOLE_HOME
+                  '';
+                };
+
+                guacdBindHost = mkOption {
+                  type = types.str;
+                  default = "127.0.0.1";
+                  description = lib.mdDoc ''
+                    bind_host parameter
+                  '';
+                };
+
+                purifyOnStart = mkOption {
+                  type = types.bool;
+                  default = true;
+                  description = lib.mdDoc ''
+                    On startup, the `baseDir` directory is populated with various files,
+                    subdirectories and symlinks. If this option is enabled, these items
+                    are first removed. This prevents interference from remainders of an
+                    old configuration, so it's recommended to enable this option.
+                  '';
+                };
+
+                guacamoleProperties = mkOption {
+                  type = types.lines;
+                  default = "";
+                  description = lib.mdDoc ''
+                    Configuration written to $GUACAMOLE_HOME/guacamole.properties
+                  '';
+                };
+
+                logbackXml = mkOption {
+                  type = types.lines;
+                  default = "";
+                  description = lib.mdDoc ''
+                    Configuration written to $GUACAMOLE_HOME/logback.xml
+                  '';
+                };
+
+                userMapping = mkOption {
+                  type = types.lines;
+                  default = "";
+                  description = lib.mdDoc ''
+                    Configuration written to $GUACAMOLE_HOME/user-mapping.xml
+                  '';
+                };
+              };
+
+            };
+
+            config = mkIf cfg.enable {
+              systemd.services.guacd = {
+                description = "Apache Guacamole server";
+                wantedBy = [ "multi-user.target" ];
+                after = [ "network.target" ];
+
+                serviceConfig = {
+                  Environment = [
+                    "GUACAMOLE_HOME=${cfg.baseDir}"
+                  ] ++ cfg.extraEnvironment;
+                  ExecStart = "${pkgs.guacamole-server}/bin/guacd -f -b ${cfg.guacdBindHost}";
+                };
+
+                preStart = ''
+                  # Create and clean the base directory
+                  ${lib.optionalString cfg.purifyOnStart ''
+                  rm -rf ${cfg.baseDir}/{guacamole.properties,logback.xml,extensions,lib,user-mapping.xml}
+                  ''}
+                  mkdir -p ${cfg.baseDir}
+
+                  # Setup guacamole.properties
+                  ${lib.optionalString (cfg.guacamoleProperties != "") ''
+                    cat << EOF > ${cfg.baseDir}/guacamole.properties
+                    ${cfg.guacamoleProperties}
+                    EOF
+                  ''}
+
+                  # Setup logback.xml
+                  ${lib.optionalString (cfg.logbackXml != "") ''
+                    cat << EOF > ${cfg.baseDir}/logback.xml
+                    ${cfg.logbackXml}
+                    EOF
+                  ''}
+
+                  # Setup user-mapping.xml
+                  ${lib.optionalString (cfg.userMapping != "") ''
+                    cat << EOF > ${cfg.baseDir}/user-mapping.xml
+                    ${cfg.userMapping}
+                    EOF
+                  ''}
+                '';
+              };
+
+
+              services.tomcat = {
+                enable = true;
+
+                webapps = [ (pkgs.guacamole-client + "/guacamole-client-1.5.0.war") ];
+                extraEnvironment = [ "GUACAMOLE_HOME=${cfg.baseDir}" ];
+              };
+            };
+          };
+      };
+    } // flake-utils.lib.eachDefaultSystem
       (
         system:
         let
@@ -132,137 +262,6 @@
                     platforms = [ "x86_64-linux" "i686-linux" ];
                   };
               };
-
-          nixosModules = {
-            guacamole = { config, lib, pkgs, ... }:
-              with lib;
-              let
-                cfg = config.services.guacamole;
-              in
-              {
-                meta = {
-                  maintainers = with maintainers; [ ];
-                };
-
-                options = {
-                  services.guacamole = {
-                    enable = mkEnableOption (lib.mdDoc "Apache Guacamole");
-
-                    extraEnvironment = mkOption {
-                      type = types.listOf types.str;
-                      default = [ ];
-                      example = [ "ENVIRONMENT=production" ];
-                      description = lib.mdDoc "Environment Variables to pass to guacd";
-                    };
-
-                    baseDir = mkOption {
-                      type = lib.types.path;
-                      default = "/etc/guacamole";
-                      description = lib.mdDoc ''
-                        Location of $GUACAMOLE_HOME
-                      '';
-                    };
-
-                    guacdBindHost = mkOption {
-                      type = types.str;
-                      default = "127.0.0.1";
-                      description = lib.mdDoc ''
-                        bind_host parameter
-                      '';
-                    };
-
-                    purifyOnStart = mkOption {
-                      type = types.bool;
-                      default = true;
-                      description = lib.mdDoc ''
-                        On startup, the `baseDir` directory is populated with various files,
-                        subdirectories and symlinks. If this option is enabled, these items
-                        are first removed. This prevents interference from remainders of an
-                        old configuration, so it's recommended to enable this option.
-                      '';
-                    };
-
-                    guacamoleProperties = mkOption {
-                      type = types.lines;
-                      default = "";
-                      description = lib.mdDoc ''
-                        Configuration written to $GUACAMOLE_HOME/guacamole.properties
-                      '';
-                    };
-
-                    logbackXml = mkOption {
-                      type = types.lines;
-                      default = "";
-                      description = lib.mdDoc ''
-                        Configuration written to $GUACAMOLE_HOME/logback.xml
-                      '';
-                    };
-
-                    userMapping = mkOption {
-                      type = types.lines;
-                      default = "";
-                      description = lib.mdDoc ''
-                        Configuration written to $GUACAMOLE_HOME/user-mapping.xml
-                      '';
-                    };
-                  };
-
-                };
-
-                config = mkIf cfg.enable {
-                  systemd.services.guacd = {
-                    description = "Apache Guacamole server";
-                    wantedBy = [ "multi-user.target" ];
-                    after = [ "network.target" ];
-
-                    serviceConfig = {
-                      Environment = [
-                        "GUACAMOLE_HOME=${cfg.baseDir}"
-                      ] ++ cfg.extraEnvironment;
-                      ExecStart = "${pkgs.guacamole-server}/bin/guacd -f -b ${cfg.guacdBindHost}";
-                    };
-
-                    preStart = ''
-                      # Create and clean the base directory
-                      ${lib.optionalString cfg.purifyOnStart ''
-                      rm -rf ${cfg.baseDir}/{guacamole.properties,logback.xml,extensions,lib,user-mapping.xml}
-                      ''}
-                      mkdir -p ${cfg.baseDir}
-
-                      # Setup guacamole.properties
-                      ${lib.optionalString (cfg.guacamoleProperties != "") ''
-                        cat << EOF > ${cfg.baseDir}/guacamole.properties
-                        ${cfg.guacamoleProperties}
-                        EOF
-                      ''}
-
-                      # Setup logback.xml
-                      ${lib.optionalString (cfg.logbackXml != "") ''
-                        cat << EOF > ${cfg.baseDir}/logback.xml
-                        ${cfg.logbackXml}
-                        EOF
-                      ''}
-
-                      # Setup user-mapping.xml
-                      ${lib.optionalString (cfg.userMapping != "") ''
-                        cat << EOF > ${cfg.baseDir}/user-mapping.xml
-                        ${cfg.userMapping}
-                        EOF
-                      ''}
-                    '';
-                  };
-
-
-                  services.tomcat = {
-                    enable = true;
-
-                    webapps = [ (pkgs.guacamole-client + "/guacamole-client-1.5.0.war") ];
-                    extraEnvironment = [ "GUACAMOLE_HOME=${cfg.baseDir}" ];
-                  };
-                };
-              };
-          };
-
         }
       );
 
