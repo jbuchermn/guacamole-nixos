@@ -158,6 +158,14 @@
                       description = lib.mdDoc "Environment Variables to pass to guacd";
                     };
 
+                    baseDir = mkOption {
+                      type = lib.types.path;
+                      default = "/etc/guacamole";
+                      description = lib.mdDoc ''
+                        Location of GUACAMOLE_HOME
+                      '';
+                    };
+
                   };
 
                 };
@@ -173,10 +181,40 @@
 
                     serviceConfig = {
                       Environment = [
-                        "GUACAMOLE_HOME=/"
+                        "GUACAMOLE_HOME=${cfg.baseDir}"
                       ] ++ cfg.extraEnvironment;
                       ExecStart = "${pkgs.guacamole-server}/bin/guacd -f";
                     };
+
+                    preStart = ''
+                      # Create the base directory
+                      mkdir -p ${cfg.baseDir}
+
+                      cat << EOF > ${cfg.baseDir}/user-mapping.xml
+                      <user-mapping>
+                        <authorize
+                              username="user"
+                              password="password"
+
+                          <!-- First authorized connection -->
+                          <connection name="localhost">
+                              <protocol>vnc</protocol>
+                              <param name="hostname">localhost</param>
+                              <param name="port">5901</param>
+                              <param name="password">password</param>
+                          </connection>
+                        </authorize>
+                      </user-mapping>
+
+                      EOF
+                    '';
+                  };
+
+
+                  services.tomcat = {
+                    enable = true;
+
+                    webapps = [ pkgs.guacamole-client ];
                   };
                 };
               };
